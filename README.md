@@ -1,7 +1,7 @@
 # Serum Osmolality Calculator
 
-> **Domain:** Clinical Decision Support & Biomedical Computing  
-> **Reference Guidelines & Standards:** `Standard Clinical Formulations & ISO/IEC Quality Frameworks`
+> **Domain:** Clinical Decision Support & Biomedical Computing
+> **Reference Guidelines & Standards:** CAP / CLSI / ISO Standards
 
 <div align="center">
 
@@ -16,97 +16,177 @@
 
 ---
 
-## 📖 What It Does
+## What It Does
 
-Serum Osmolality Calculator
-Calculated osm, osmolar gap and corrected Na for hyperglycemia with ADH context.
-Stdlib only.
+Serum Osmolality Calculator is a clinical decision support tool that computes:
 
----
+- **Calculated serum osmolality** and **osmolar gap**
+- **MELD-Na** (Model for End-Stage Liver Disease with sodium)
+- **QTc** (corrected QT interval, Bazett's formula)
+- **BMI** (body mass index)
+- **HbA1c ↔ eAG** conversion (estimated average glucose)
+- **APRI / FIB-4** liver fibrosis indices
 
-## ⚙️ Key Capabilities & Algorithmic Modules
-
-### 🔬 Analytical Functions
-
-- **`calculate_score()`**: Generic formula stub: weighted sum of numeric inputs.
-- **`assess_row()`** — calculates and validates assess_row parameters.
-- **`process_csv()`** — calculates and validates process_csv parameters.
-- **`build_parser()`** — calculates and validates build_parser parameters.
-- **`main()`** — calculates and validates main parameters.
+It also provides a multi-agent audit pipeline with PHI outbound protection and a tamper-evident HMAC-SHA256 audit trail.
 
 ---
 
-## 📐 Mathematical Formulation & Logic
+## Key Capabilities & Algorithmic Modules
 
-```text
-  """Generic formula stub: weighted sum of numeric inputs."""
-  score = sum(vals) * (0.9 + h*0.02) + math.log1p(len(vals))
-  return calculate_score(**row)
-```
+### Clinical Calculation Functions
+
+| Function | Description | Required Inputs |
+|:---------|:------------|:----------------|
+| `calculate_meld_na()` | MELD-Na score for liver disease severity | bilirubin, creatinine, inr, sodium |
+| `calculate_qtc()` | QTc via Bazett's formula | qt_ms/qt + (rr_ms or hr_bpm) |
+| `calculate_bmi_z()` | Body mass index | weight_kg, height_cm |
+| `convert_hba1c()` | HbA1c ↔ estimated average glucose | hba1c_percent or eag_mgdl |
+| `calculate_apri_fib4()` | APRI and FIB-4 liver fibrosis indices | ast_u_l, platelets_109 |
+| `calculate_score()` | Generic weighted-score fallback | any numeric inputs |
+
+### Routing
+
+`assess_row(row)` inspects a dictionary of lab values and automatically routes to the appropriate calculator based on the keys present.
 
 ---
 
-## 💻 CLI Quickstart & Usage
+## Quickstart
 
-### 1. Guided Interactive Mode
+### Prerequisites
+
+- Python 3.10+
+- pip
+
+### Installation
+
 ```bash
-python cli.py
+pip install -e ".[dev]"
 ```
 
-### 2. Direct Parameterized Evaluation
+### Environment Configuration
+
+Copy `.env.example` to `.env` and set a strong audit key:
+
 ```bash
-python cli.py --task-id <value> --target <value> --primary <value> --secondary <value>
+cp .env.example .env
+# Edit .env and set AUDIT_SECRET_KEY to a random value:
+#   python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-### Parameter Reference
-- `--task-id`: Specifies input measurement or parameter value.
-- `--target`: Specifies input measurement or parameter value.
-- `--primary`: Specifies input measurement or parameter value.
-- `--secondary`: Specifies input measurement or parameter value.
-- `--critical`: Specifies input measurement or parameter value.
-- `--status`: Specifies input measurement or parameter value.
-- `--input`: Specifies input measurement or parameter value.
-- `--output`: Specifies input measurement or parameter value.
+### CLI Usage
 
-### Input Data Schema
+**Single calculation (JSON input):**
+```bash
+python cli.py single --json '{"bilirubin": 2.0, "creatinine": 1.5, "inr": 1.2, "sodium": 135}'
+```
 
-| Field | Description | Requirement |
-|:------|:------------|:------------|
-| `id` | Parameter / observation metric | Required |
-| `value` | Parameter / observation metric | Required |
-| `qty` | Parameter / observation metric | Required |
+**Single calculation (named args):**
+```bash
+python cli.py single --bili 2.0 --creat 1.5 --inr 1.2 --na 135
+```
+
+**Batch CSV processing:**
+```bash
+python cli.py batch --input sample.csv --output results.csv
+```
+
+**Interactive agent audit:**
+```bash
+python cli.py audit --task-id TASK-001 --primary 28.5 --secondary 14.2
+```
+
+**Verify audit trail integrity:**
+```bash
+python cli.py verify-audit
+```
+
+**Launch REST API server:**
+```bash
+python cli.py serve --host 127.0.0.1 --port 8000
+```
+
+### REST API Endpoints
+
+| Method | Path | Description |
+|:-------|:-----|:------------|
+| GET | `/health` | Health and metadata |
+| GET | `/metrics` | Operational metrics |
+| POST | `/api/audit` | Submit task payload for multi-agent evaluation |
+| POST | `/api/chat` | Supervisory conversational query |
+| GET | `/api/audit/logs` | Retrieve and verify HMAC audit trail |
 
 ---
 
-## 🛡️ Security & Enterprise Architecture
+## Testing
 
-* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
-* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
-* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
-* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
-* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
-
----
-
-## 🧪 Testing & Verification
-
-Run the automated test suite:
+Run the full test suite:
 
 ```bash
 pytest -v
 ```
 
-Execute high-throughput batch simulation benchmarks:
+Run with coverage:
 
 ```bash
-python simulator.py --tasks 1000 --concurrency 8
+pytest -v --cov=. --cov-report=term-missing
 ```
 
 ---
 
-## 🐳 Container Deployment
+## Container Deployment
+
+### Docker
 
 ```bash
 docker build -t serum-osmolality-calculator .
-docker run -p 8000:8000 serum-osmolality-calculator
+docker run -p 8000:8000 --env-file .env serum-osmolality-calculator
 ```
+
+### Docker Compose
+
+```bash
+docker compose up --build
+```
+
+---
+
+## Security
+
+- **Zero-PHI Outbound Interceptor:** AST and regex inspection blocking SSNs, MRNs, phone numbers, emails, and patient identifiers.
+- **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation.
+- **Path Traversal Protection:** All file I/O validates paths against traversal sequences and unsafe characters.
+- **Configurable Audit Key:** The HMAC signing key is read from the `AUDIT_SECRET_KEY` environment variable — never hardcoded.
+
+---
+
+## Project Structure
+
+```
+serum-osmolality-calculator/
+├── agents/                  # Multi-agent audit pipeline
+│   ├── base.py              # PHI guard, HMAC audit trail
+│   ├── models.py            # Pydantic schemas
+│   ├── supervisor.py        # Orchestrator
+│   ├── workers.py           # Specialized evaluation workers
+│   ├── api.py               # FastAPI REST server
+│   ├── metrics.py           # Prometheus metrics
+│   ├── learning.py          # Bayesian calibration engine
+│   ├── llm_factory.py       # LLM provider abstraction
+│   └── streamer.py          # WebSocket telemetry
+├── tests/                   # Pytest test suite
+├── web/index.html           # Operations console UI
+├── cli.py                   # CLI entry point
+├── osmolality.py            # Core clinical calculations
+├── enrichment.py            # Enrichment feature engines
+├── simulator.py             # High-throughput stress simulator
+├── pyproject.toml           # Project metadata and dependencies
+├── Dockerfile               # Container build
+├── docker-compose.yml       # Compose orchestration
+└── .env.example             # Environment template
+```
+
+---
+
+## License
+
+MIT License — see [LICENSE](LICENSE).
