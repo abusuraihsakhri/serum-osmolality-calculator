@@ -70,3 +70,23 @@ def test_api_calculate_schema():
     assert client.post("/api/osmolality", json={"sodium": 140, "glucose": 90, "bun": 14, "unit_system": "si"}).status_code == 422
     assert client.get("/").status_code == 200
     assert client.get("/calculator.js").status_code == 200
+
+def test_legacy_meld_uses_log_creatinine():
+    from osmolality import calculate_meld_na
+    value = calculate_meld_na(bilirubin=1, creatinine=4, inr=1, sodium=137)
+    assert value["meld"] == pytest.approx(round(9.57 * math.log(4) + 6.43, 2))
+
+
+def test_low_meld_not_adjusted_for_sodium():
+    from osmolality import calculate_meld_na
+    value = calculate_meld_na(bilirubin=1, creatinine=1, inr=1, sodium=125)
+    assert value["meld_na"] == value["meld"]
+
+
+def test_hmac_audit_detects_tampering():
+    from agents.base import AuditTrail
+    log = AuditTrail(secret_key="test-secret")
+    log.log("actor", "system", "test", {"status": "ok"})
+    assert log.verify_integrity()
+    log.logs[0]["event_type"] = "tampered"
+    assert not log.verify_integrity()
