@@ -3,7 +3,8 @@ FastAPI REST API Server for Serum Osmolality Calculator.
 """
 from typing import Dict, Any, List
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+from serum import calculate_osmolality
 from .base import AuditLogger, PHIGuard
 from .models import SystemTaskPayload, ConsensusDossier
 from .supervisor import SystemSupervisor
@@ -17,8 +18,54 @@ app = FastAPI(
 )
 
 
+class OsmolalityRequest(BaseModel):
+    sodium: float = Field(gt=0)
+    glucose: float = Field(ge=0)
+    bun: float | None = Field(default=None, ge=0)
+    urea: float | None = Field(default=None, ge=0)
+    measured_osmolality: float | None = Field(default=None, ge=0)
+    unit_system: str = "conventional"
+
+    @field_validator("sodium", "glucose", "bun", "urea", "measured_osmolality")
+    @classmethod
+    def finite_values(cls, value):
+        import math
+        if value is not None and not math.isfinite(value):
+            raise ValueError("Inputs must be finite")
+        return value
+
+
+@app.post("/api/osmolality")
+def api_osmolality(payload: OsmolalityRequest):
+    try:
+        return calculate_osmolality(**payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
 class ChatRequest(BaseModel):
     query: str
+
+
+@app.get("/")
+def index():
+    from pathlib import Path
+    from fastapi.responses import FileResponse
+    return FileResponse(Path(__file__).resolve().parent.parent / "web" / "index.html")
+
+
+@app.get("/app.js")
+def app_js():
+    from pathlib import Path
+    from fastapi.responses import FileResponse
+    return FileResponse(Path(__file__).resolve().parent.parent / "web" / "app.js", media_type="text/javascript")
+
+
+@app.get("/calculator.js")
+def calculator_js():
+    from pathlib import Path
+    from fastapi.responses import FileResponse
+    return FileResponse(Path(__file__).resolve().parent.parent / "web" / "calculator.js", media_type="text/javascript")
 
 
 @app.get("/health")
