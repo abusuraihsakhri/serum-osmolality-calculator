@@ -277,8 +277,7 @@ def assess_row(row: Dict[str, Any]) -> Dict[str, Any]:
                 row.get("platelets_109"),
                 row.get("age_years") or row.get("age"),
             )
-        # Fallback: generic score
-        return calculate_score(**row)
+        # Do not manufacture a clinical score for unrecognized laboratory columns.\n        return {"error": "No supported calculator matched the supplied fields"}
     except Exception as e:
         return {"error": str(e)}
 
@@ -348,7 +347,7 @@ def process_csv(inp: str, out: str) -> List[Dict[str, Any]]:
     for rr in results:
         all_keys.update(rr.keys())
     # keep original first
-    extra = [k for k in all_keys if k not in fieldnames]
+    extra = sorted(k for k in all_keys if k not in fieldnames)
 
     with open(out_path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(fieldnames) + extra)
