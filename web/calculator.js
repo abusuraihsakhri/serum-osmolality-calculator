@@ -2,8 +2,11 @@
 (function (root) {
   "use strict";
   function numeric(name, value, positive) {
-    if (value === "" || value === null || value === undefined || typeof value === "boolean") {
+    if (value === "" || value === null || value === undefined || (typeof value !== "number" && typeof value !== "string")) {
       throw new Error(name + " is required.");
+    }
+    if (typeof value === "string" && !/^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:e[+-]?[0-9]+)?$/i.test(value.trim())) {
+      throw new Error(name + " must be a decimal number.");
     }
     const number = Number(value);
     if (!Number.isFinite(number)) throw new Error(name + " must be a finite number.");
@@ -30,6 +33,7 @@
     }
     const effective = 2 * sodium + glucosePart;
     const calculated = effective + ureaPart;
+    if (!Number.isFinite(calculated)) throw new Error("Computed osmolality is outside the supported numeric range.");
     const measured = input.measured_osmolality === undefined || input.measured_osmolality === null ||
       input.measured_osmolality === "" ? null : numeric("Measured osmolality", input.measured_osmolality, false);
     return {
