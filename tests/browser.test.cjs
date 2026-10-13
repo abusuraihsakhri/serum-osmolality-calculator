@@ -33,3 +33,10 @@ test("rounded gap is derived from unrounded osmolality", () => {
   const r = calculate({ sodium: 140, glucose: 91, bun: 13, measured_osmolality: 300 });
   assert.equal(r.osmolal_gap, Math.round((300 - 280 - 91 / 18 - 13 / 2.8) * 100) / 100);
 });
+
+
+test("decimal inputs are accepted and overflow or object coercion is rejected", () => {
+  assert.equal(calculate({ sodium: "140.5", glucose: "90.1", bun: "14.2" }).calculated_osmolality, 291.08);
+  assert.throws(() => calculate({ sodium: 1e308, glucose: 0, bun: 0 }));
+  assert.throws(() => calculate({ sodium: [140], glucose: 90, bun: 14 }));
+});
