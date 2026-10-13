@@ -44,6 +44,10 @@ def main(argv=None):
     p_batch.add_argument("-i", "--input", required=True)
     p_batch.add_argument("-o", "--output", default="results.csv")
 
+    p_osm_batch = subparsers.add_parser("osm-batch", help="Calculate serum values from a CSV file")
+    p_osm_batch.add_argument("-i", "--input", required=True)
+    p_osm_batch.add_argument("-o", "--output", default="results.csv")
+
     # Verify Audit
     subparsers.add_parser("verify-audit", help="Verify HMAC audit trail integrity")
 
@@ -102,6 +106,12 @@ def main(argv=None):
         trail = AuditLogger.get_trail()
         valid = AuditLogger.verify_integrity()
         print(f"Audit Trail Blocks: {len(trail)} | Cryptographic Integrity Verified: {valid}")
+        return 0
+
+    if args.command == "osm-batch":
+        from osmolality import process_csv
+        results = process_csv(args.input, args.output)
+        print(f"Processed {len(results)} serum rows -> {args.output}")
         return 0
 
     if args.command == "batch":
