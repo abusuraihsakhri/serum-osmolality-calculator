@@ -54,6 +54,8 @@ def calculate_osmolality(
         urea_component = nitrogen
     effective = 2.0 * na + glucose_component
     calculated = effective + urea_component
+    if not math.isfinite(calculated):
+        raise ValueError("Computed osmolality is outside the supported numeric range")
     measured = None if measured_osmolality is None or measured_osmolality == "" else _number(
         "measured_osmolality", measured_osmolality
     )
