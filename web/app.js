@@ -2,6 +2,7 @@
 const form = document.getElementById("calculator-form");
 const unitSelect = document.getElementById("units");
 const resultPanel = document.getElementById("results");
+const emptyState = document.getElementById("empty-state");
 const errors = document.getElementById("errors");
 const output = {
   calculated: document.getElementById("calculated"),
@@ -28,6 +29,7 @@ function changeUnits() {
 function clearResult() {
   errors.textContent = "";
   resultPanel.hidden = true;
+  emptyState.hidden = false;
 }
 function format(value) {
   return value === null ? "Not provided" : value.toFixed(2);
@@ -53,6 +55,7 @@ form.addEventListener("submit", (event) => {
     output.glucose.textContent = format(value.components.glucose);
     output.urea.textContent = format(value.components.urea);
     resultPanel.hidden = false;
+    emptyState.hidden = true;
   } catch (error) {
     errors.textContent = error.message;
   }
