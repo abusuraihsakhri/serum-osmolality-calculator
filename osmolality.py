@@ -43,7 +43,7 @@ def calculate_meld_na(
     """
     Calculate MELD-Na score (Model for End-Stage Liver Disease with Na).
 
-    MELD = 3.78*ln(bilirubin) + 11.2*ln(INR) + 9.57*creatinine + 6.43
+    Historical MELD-Na (not MELD 3.0). All values in conventional units.\n    MELD = 3.78*ln(bilirubin) + 11.2*ln(INR) + 9.57*ln(creatinine) + 6.43
     MELD-Na = MELD + 1.32*(137-Na) - [0.033*MELD*(137-Na)]
     """
     bili = _to_float(bilirubin, 1.0)
@@ -53,15 +53,14 @@ def calculate_meld_na(
 
     # Clamp to valid ranges
     bili = max(bili, 1.0)
-    creat = max(creatinine, 1.0) if not dialysis else 4.0
-    creat = min(creatinine, 4.0) if not dialysis else 4.0
+    creat = 4.0 if dialysis else min(max(creat, 1.0), 4.0)
     inr_val = max(inr_val, 1.0)
-    na = max(min(na, 140), 120)  # clamp Na to 120-140
+    na = max(min(na, 137), 125)  # historical MELD-Na sodium limits
 
     meld = (
         3.78 * math.log(bili)
         + 11.2 * math.log(inr_val)
-        + 9.57 * math.log(creatinine if not dialysis else 4.0)
+        + 9.57 * math.log(creat)
         + 6.43
     )
     meld = max(meld, 6)  # minimum MELD score
@@ -75,7 +74,7 @@ def calculate_meld_na(
         "score": round(meld_na, 2),
         "meld": round(meld, 2),
         "meld_na": round(meld_na, 2),
-        "inputs": {"bilirubin": bili, "creatinine": creatinine, "inr": inr_val, "sodium": na},
+        "inputs": {"bilirubin": bili, "creatinine": creat, "inr": inr_val, "sodium": na},
     }
 
 
@@ -92,10 +91,9 @@ def calculate_qtc(qt_ms: Any, rr_ms: Any = None, hr_bpm: Any = None) -> Dict[str
     rr = _to_float(rr_ms)
     if rr is None:
         hr = _to_float(hr_bpm, 60.0)
-        rr = 60.0 / max(hr, 1.0)
-
-    # Convert RR from ms to seconds if needed
-    rr_sec = rr / 1000.0 if rr > 10 else rr
+        rr_sec = 60.0 / max(hr, 1.0)
+    else:
+        rr_sec = rr / 1000.0  # rr_ms is always milliseconds
     rr_sec = max(rr_sec, 0.1)  # prevent division by zero
 
     qtc = qt / math.sqrt(rr_sec)
@@ -115,7 +113,7 @@ def calculate_bmi_z(
     sex: str = "M",
 ) -> Dict[str, Any]:
     """
-    Calculate BMI and approximate z-score for age.
+    Calculate BMI. This function does not calculate an age-adjusted z-score.
     BMI = weight(kg) / height(m)^2
     """
     wt = _to_float(weight_kg)
