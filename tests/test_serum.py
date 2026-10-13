@@ -95,3 +95,12 @@ def test_hmac_audit_detects_tampering():
 def test_extreme_inputs_reject_overflow():
     with pytest.raises(ValueError):
         calculate_osmolality(1e308, 0, 0)
+
+
+def test_hmac_uses_unambiguous_serialization():
+    from agents.base import AuditTrail
+    log = AuditTrail(secret_key="test-secret")
+    log.log("a|b", "c", "test", {"status": "ok"})
+    log.logs[0]["actor"] = "a"
+    log.logs[0]["actor_tier"] = "b|c"
+    assert not log.verify_integrity()
