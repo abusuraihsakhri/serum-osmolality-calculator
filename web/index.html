@@ -109,14 +109,5 @@
 </main>
 <script src="./calculator.js" defer></script>
 <script src="./app.js" defer></script>
-<script>
-  // Maintain a visible empty state until the user requests a result.
-  document.addEventListener("DOMContentLoaded", function () {
-    const target = document.getElementById("results");
-    new MutationObserver(function () {
-      document.getElementById("empty-state").hidden = !target.hidden;
-    }).observe(target, { attributes: true, attributeFilter: ["hidden"] });
-  });
-</script>
 </body>
 </html>
