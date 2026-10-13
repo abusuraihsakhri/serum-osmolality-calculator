@@ -90,3 +90,8 @@ def test_hmac_audit_detects_tampering():
     assert log.verify_integrity()
     log.logs[0]["event_type"] = "tampered"
     assert not log.verify_integrity()
+
+
+def test_extreme_inputs_reject_overflow():
+    with pytest.raises(ValueError):
+        calculate_osmolality(1e308, 0, 0)
