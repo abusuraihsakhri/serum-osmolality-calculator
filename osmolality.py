@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from serum import calculate_osmolality
+
 
 # ---------------------------------------------------------------------------
 # Clinical calculation helpers
@@ -229,6 +231,16 @@ def assess_row(row: Dict[str, Any]) -> Dict[str, Any]:
         return {"error": "Input must be a dictionary"}
 
     try:
+        # Serum calculation takes precedence when its characteristic inputs are present.
+        if any(key in row for key in ("glucose", "bun", "urea", "measured_osmolality")):
+            return calculate_osmolality(
+                sodium=row.get("sodium", row.get("na")),
+                glucose=row.get("glucose"),
+                bun=row.get("bun"),
+                urea=row.get("urea"),
+                measured_osmolality=row.get("measured_osmolality"),
+                unit_system=row.get("unit_system", "conventional"),
+            )
         # MELD-Na: requires bilirubin + creatinine
         if "bilirubin" in row and "creatinine" in row:
             return calculate_meld_na(
@@ -360,6 +372,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--creat", type=float)
     s.add_argument("--inr", type=float)
     s.add_argument("--na", type=float)
+    s.add_argument("--glucose", type=float, help="mg/dL (conventional) or mmol/L (SI)")
+    s.add_argument("--bun", type=float, help="blood urea nitrogen, mg/dL")
+    s.add_argument("--urea", type=float, help="urea, mmol/L; use --unit-system si")
+    s.add_argument("--measured-osmolality", type=float, help="optional measured result, mOsm/kg")
+    s.add_argument("--unit-system", choices=["conventional", "si"], default="conventional")
     s.add_argument("--qt", type=float)
     s.add_argument("--rr", type=float)
     s.add_argument("--hr", type=float)
@@ -378,9 +395,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             row = {
                 k: getattr(a, k)
-                for k in ["bili", "creat", "inr", "na", "qt", "rr", "hr"]
+                for k in ["bili", "creat", "inr", "na", "qt", "rr", "hr", "glucose", "bun", "urea", "measured_osmolality"]
                 if getattr(a, k, None) is not None
             }
+            row["unit_system"] = a.unit_system
             # map aliases
             if a.bili is not None:
                 row["bilirubin"] = a.bili
