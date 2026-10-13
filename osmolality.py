@@ -26,8 +26,9 @@ def _to_float(value: Any, default: Optional[float] = None) -> Optional[float]:
     if value is None:
         return default
     try:
-        return float(value)
-    except (TypeError, ValueError):
+        number = float(value)
+        return number if math.isfinite(number) else default
+    except (TypeError, ValueError, OverflowError):
         return default
 
 
@@ -66,7 +67,7 @@ def calculate_meld_na(
     meld = max(meld, 6)  # minimum MELD score
     meld = min(meld, 40)  # cap at 40
 
-    meld_na = meld + 1.32 * (137 - na) - (0.033 * meld * (137 - na))
+    meld_na = (meld + 1.32 * (137 - na) - (0.033 * meld * (137 - na))) if meld > 11 else meld
     meld_na = max(meld_na, 6)
     meld_na = min(meld_na, 40)
 
