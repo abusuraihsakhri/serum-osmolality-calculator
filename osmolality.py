@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from serum import calculate_osmolality
+
 
 # ---------------------------------------------------------------------------
 # Clinical calculation helpers
@@ -24,8 +26,9 @@ def _to_float(value: Any, default: Optional[float] = None) -> Optional[float]:
     if value is None:
         return default
     try:
-        return float(value)
-    except (TypeError, ValueError):
+        number = float(value)
+        return number if math.isfinite(number) else default
+    except (TypeError, ValueError, OverflowError):
         return default
 
 
@@ -41,7 +44,7 @@ def calculate_meld_na(
     """
     Calculate MELD-Na score (Model for End-Stage Liver Disease with Na).
 
-    MELD = 3.78*ln(bilirubin) + 11.2*ln(INR) + 9.57*creatinine + 6.43
+    Historical MELD-Na (not MELD 3.0). All values in conventional units.\n    MELD = 3.78*ln(bilirubin) + 11.2*ln(INR) + 9.57*ln(creatinine) + 6.43
     MELD-Na = MELD + 1.32*(137-Na) - [0.033*MELD*(137-Na)]
     """
     bili = _to_float(bilirubin, 1.0)
@@ -51,21 +54,20 @@ def calculate_meld_na(
 
     # Clamp to valid ranges
     bili = max(bili, 1.0)
-    creat = max(creatinine, 1.0) if not dialysis else 4.0
-    creat = min(creatinine, 4.0) if not dialysis else 4.0
+    creat = 4.0 if dialysis else min(max(creat, 1.0), 4.0)
     inr_val = max(inr_val, 1.0)
-    na = max(min(na, 140), 120)  # clamp Na to 120-140
+    na = max(min(na, 137), 125)  # historical MELD-Na sodium limits
 
     meld = (
         3.78 * math.log(bili)
         + 11.2 * math.log(inr_val)
-        + 9.57 * math.log(creatinine if not dialysis else 4.0)
+        + 9.57 * math.log(creat)
         + 6.43
     )
     meld = max(meld, 6)  # minimum MELD score
     meld = min(meld, 40)  # cap at 40
 
-    meld_na = meld + 1.32 * (137 - na) - (0.033 * meld * (137 - na))
+    meld_na = (meld + 1.32 * (137 - na) - (0.033 * meld * (137 - na))) if meld > 11 else meld
     meld_na = max(meld_na, 6)
     meld_na = min(meld_na, 40)
 
@@ -73,7 +75,7 @@ def calculate_meld_na(
         "score": round(meld_na, 2),
         "meld": round(meld, 2),
         "meld_na": round(meld_na, 2),
-        "inputs": {"bilirubin": bili, "creatinine": creatinine, "inr": inr_val, "sodium": na},
+        "inputs": {"bilirubin": bili, "creatinine": creat, "inr": inr_val, "sodium": na},
     }
 
 
@@ -90,10 +92,9 @@ def calculate_qtc(qt_ms: Any, rr_ms: Any = None, hr_bpm: Any = None) -> Dict[str
     rr = _to_float(rr_ms)
     if rr is None:
         hr = _to_float(hr_bpm, 60.0)
-        rr = 60.0 / max(hr, 1.0)
-
-    # Convert RR from ms to seconds if needed
-    rr_sec = rr / 1000.0 if rr > 10 else rr
+        rr_sec = 60.0 / max(hr, 1.0)
+    else:
+        rr_sec = rr / 1000.0  # rr_ms is always milliseconds
     rr_sec = max(rr_sec, 0.1)  # prevent division by zero
 
     qtc = qt / math.sqrt(rr_sec)
@@ -113,7 +114,7 @@ def calculate_bmi_z(
     sex: str = "M",
 ) -> Dict[str, Any]:
     """
-    Calculate BMI and approximate z-score for age.
+    Calculate BMI. This function does not calculate an age-adjusted z-score.
     BMI = weight(kg) / height(m)^2
     """
     wt = _to_float(weight_kg)
@@ -229,6 +230,16 @@ def assess_row(row: Dict[str, Any]) -> Dict[str, Any]:
         return {"error": "Input must be a dictionary"}
 
     try:
+        # Serum calculation takes precedence when its characteristic inputs are present.
+        if any(key in row for key in ("glucose", "bun", "urea", "measured_osmolality")):
+            return calculate_osmolality(
+                sodium=row.get("sodium", row.get("na")),
+                glucose=row.get("glucose"),
+                bun=row.get("bun"),
+                urea=row.get("urea"),
+                measured_osmolality=row.get("measured_osmolality"),
+                unit_system=row.get("unit_system", "conventional"),
+            )
         # MELD-Na: requires bilirubin + creatinine
         if "bilirubin" in row and "creatinine" in row:
             return calculate_meld_na(
@@ -266,8 +277,7 @@ def assess_row(row: Dict[str, Any]) -> Dict[str, Any]:
                 row.get("platelets_109"),
                 row.get("age_years") or row.get("age"),
             )
-        # Fallback: generic score
-        return calculate_score(**row)
+        # Do not manufacture a clinical score for unrecognized laboratory columns.\n        return {"error": "No supported calculator matched the supplied fields"}
     except Exception as e:
         return {"error": str(e)}
 
@@ -337,7 +347,7 @@ def process_csv(inp: str, out: str) -> List[Dict[str, Any]]:
     for rr in results:
         all_keys.update(rr.keys())
     # keep original first
-    extra = [k for k in all_keys if k not in fieldnames]
+    extra = sorted(k for k in all_keys if k not in fieldnames)
 
     with open(out_path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(fieldnames) + extra)
@@ -360,6 +370,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--creat", type=float)
     s.add_argument("--inr", type=float)
     s.add_argument("--na", type=float)
+    s.add_argument("--glucose", type=float, help="mg/dL (conventional) or mmol/L (SI)")
+    s.add_argument("--bun", type=float, help="blood urea nitrogen, mg/dL")
+    s.add_argument("--urea", type=float, help="urea, mmol/L; use --unit-system si")
+    s.add_argument("--measured-osmolality", type=float, help="optional measured result, mOsm/kg")
+    s.add_argument("--unit-system", choices=["conventional", "si"], default="conventional")
     s.add_argument("--qt", type=float)
     s.add_argument("--rr", type=float)
     s.add_argument("--hr", type=float)
@@ -378,9 +393,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             row = {
                 k: getattr(a, k)
-                for k in ["bili", "creat", "inr", "na", "qt", "rr", "hr"]
+                for k in ["bili", "creat", "inr", "na", "qt", "rr", "hr", "glucose", "bun", "urea", "measured_osmolality"]
                 if getattr(a, k, None) is not None
             }
+            row["unit_system"] = a.unit_system
             # map aliases
             if a.bili is not None:
                 row["bilirubin"] = a.bili

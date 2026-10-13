@@ -5,6 +5,7 @@ import argparse
 import csv
 import json
 import sys
+from serum import calculate_osmolality
 from agents.models import SystemTaskPayload
 from agents.supervisor import SystemSupervisor
 from agents.base import AuditLogger
@@ -15,6 +16,15 @@ supervisor = SystemSupervisor(model_provider="mock")
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="serum-osmolality-calculator", description="Serum Osmolality Calculator")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    p_calc = subparsers.add_parser("calculate", help="Calculate serum osmolality, tonicity and optional gap")
+    p_calc.add_argument("--sodium", type=float, required=True, help="mmol/L")
+    p_calc.add_argument("--glucose", type=float, required=True, help="mg/dL, or mmol/L with --si")
+    nitrogen = p_calc.add_mutually_exclusive_group(required=True)
+    nitrogen.add_argument("--bun", type=float, help="BUN mg/dL")
+    nitrogen.add_argument("--urea", type=float, help="urea mmol/L (requires --si)")
+    p_calc.add_argument("--si", action="store_true", help="Use mmol/L for glucose and urea")
+    p_calc.add_argument("--measured-osmolality", type=float, help="optional measured mOsm/kg")
 
     # Audit
     p_audit = subparsers.add_parser("audit", help="Run single task evaluation")
@@ -34,6 +44,10 @@ def main(argv=None):
     p_batch.add_argument("-i", "--input", required=True)
     p_batch.add_argument("-o", "--output", default="results.csv")
 
+    p_osm_batch = subparsers.add_parser("osm-batch", help="Calculate serum values from a CSV file")
+    p_osm_batch.add_argument("-i", "--input", required=True)
+    p_osm_batch.add_argument("-o", "--output", default="results.csv")
+
     # Verify Audit
     subparsers.add_parser("verify-audit", help="Verify HMAC audit trail integrity")
 
@@ -43,6 +57,21 @@ def main(argv=None):
     p_serve.add_argument("--port", type=int, default=8000)
 
     args = parser.parse_args(argv)
+
+    if args.command == "calculate":
+        try:
+            result = calculate_osmolality(
+                sodium=args.sodium,
+                glucose=args.glucose,
+                bun=args.bun,
+                urea=args.urea,
+                measured_osmolality=args.measured_osmolality,
+                unit_system="si" if args.si else "conventional",
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+        print(json.dumps(result, indent=2))
+        return 0
 
     if args.command == "audit":
         payload = SystemTaskPayload(
@@ -77,6 +106,12 @@ def main(argv=None):
         trail = AuditLogger.get_trail()
         valid = AuditLogger.verify_integrity()
         print(f"Audit Trail Blocks: {len(trail)} | Cryptographic Integrity Verified: {valid}")
+        return 0
+
+    if args.command == "osm-batch":
+        from osmolality import process_csv
+        results = process_csv(args.input, args.output)
+        print(f"Processed {len(results)} serum rows -> {args.output}")
         return 0
 
     if args.command == "batch":

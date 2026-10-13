@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Serum Osmolality Calculator API",
-    "description": "Enterprise Distributed Component Platform (Clinical & Cryptographic AI) adhering to CAP / CLSI / NIST Standards.",
-    "version": "3.0.0-ENTERPRISE",
+    "description": "Estimated serum osmolality, tonicity, and optional osmolal gap; legacy audit endpoints are illustrative.",
+    "version": "3.1.0",
     "contact": {
       "name": "Dr. Abu Suraih Sakhri",
       "url": "https://github.com/abusuraihsakhri"
@@ -15,17 +15,17 @@
         "summary": "Health and metadata check",
         "responses": {
           "200": {
-            "description": "System optimal"
+            "description": "Service is reachable"
           }
         }
       }
     },
     "/metrics": {
       "get": {
-        "summary": "Prometheus operational metrics",
+        "summary": "In-memory service counters",
         "responses": {
           "200": {
-            "description": "Prometheus text metrics"
+            "description": "JSON processing counters"
           }
         }
       }
@@ -76,7 +76,7 @@
     },
     "/api/chat": {
       "post": {
-        "summary": "Air-gapped supervisory conversational assistant",
+        "summary": "Request a placeholder mock response",
         "requestBody": {
           "content": {
             "application/json": {
@@ -103,10 +103,92 @@
     },
     "/api/audit/logs": {
       "get": {
-        "summary": "Retrieve and cryptographically verify HMAC audit trail",
+        "summary": "Report in-memory audit block count and integrity status",
         "responses": {
           "200": {
-            "description": "Cryptographic audit trail"
+            "description": "Audit block count and verification boolean (no raw log entries)"
+          }
+        }
+      }
+    },
+    "/api/osmolality": {
+      "post": {
+        "summary": "Calculate estimated osmolality, effective osmolality, and optional osmolal gap",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sodium": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": "mmol/L"
+                  },
+                  "glucose": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "bun": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "mg/dL, conventional only"
+                  },
+                  "urea": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "mmol/L, SI only"
+                  },
+                  "measured_osmolality": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "optional mOsm/kg"
+                  },
+                  "unit_system": {
+                    "type": "string",
+                    "enum": [
+                      "conventional",
+                      "si"
+                    ],
+                    "default": "conventional"
+                  }
+                },
+                "required": [
+                  "sodium",
+                  "glucose"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Osmolality estimates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calculated_osmolality": {
+                      "type": "number"
+                    },
+                    "effective_osmolality": {
+                      "type": "number"
+                    },
+                    "osmolal_gap": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
           }
         }
       }

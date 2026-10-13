@@ -1,236 +1,114 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serum Osmolality Calculator — Operations Console</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #090d16;
-            --card: #111827;
-            --border: #1f293d;
-            --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.25);
-            --text: #f3f4f6;
-            --text-muted: #9ca3af;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --success: #10b981;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            padding: 2rem;
-            min-height: 100vh;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        .header-title h1 { font-size: 1.6rem; font-weight: 700; color: #fff; }
-        .header-title p { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; }
-        .badge {
-            display: inline-block;
-            padding: 0.3rem 0.8rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            background: var(--accent-glow);
-            color: var(--accent);
-            border: 1px solid var(--accent);
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr;
-            gap: 1.5rem;
-        }
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-        .card h2 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .form-group { margin-bottom: 1rem; }
-        label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem; }
-        input, select, textarea {
-            width: 100%;
-            padding: 0.65rem 0.9rem;
-            background: #0d1322;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: #fff;
-            font-family: inherit;
-            font-size: 0.9rem;
-        }
-        input:focus, textarea:focus { outline: none; border-color: var(--accent); }
-        .btn {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            padding: 0.7rem 1.4rem;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-            width: 100%;
-        }
-        .btn:hover { background: #2563eb; }
-        .terminal {
-            background: #060911;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            color: #10b981;
-            height: 380px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-        .metrics-bar {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        .metric-box {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
-        }
-        .metric-val { font-size: 1.4rem; font-weight: 700; color: #fff; margin-top: 0.25rem; }
-        .metric-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="description" content="Calculate estimated serum osmolality, tonicity, and the osmolal gap using conventional or SI laboratory units.">
+  <title>Serum Osmolality Calculator</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #17253d; background: #f3f6fa; line-height: 1.5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 28px 18px 48px; }
+    main { max-width: 960px; margin: 0 auto; }
+    header { margin-bottom: 24px; }
+    .eyebrow { text-transform: uppercase; letter-spacing: .12em; font-weight: 750; font-size: .75rem; color: #2563a7; }
+    h1 { font-size: clamp(1.8rem,4vw,2.55rem); line-height: 1.15; margin: 6px 0 10px; }
+    h2 { font-size: 1.14rem; margin: 0 0 18px; }
+    p { margin: 0 0 12px; }
+    .lead { color: #4e5f75; max-width: 740px; }
+    .layout { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 18px; align-items: start; }
+    .panel { background: #fff; border: 1px solid #d9e1ed; border-radius: 14px; padding: 24px; box-shadow: 0 2px 8px #14294f08; }
+    .field { margin: 0 0 16px; }
+    label { display: block; font-weight: 650; font-size: .91rem; margin-bottom: 6px; }
+    .unit { color: #54677f; font-weight: 450; }
+    input, select { display: block; width: 100%; border: 1px solid #aab8cc; border-radius: 7px; min-height: 44px; font: inherit; color: #142238; background: #fff; padding: 9px 11px; }
+    input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid #2c79e5; outline-offset: 2px; }
+    input:invalid:not(:placeholder-shown) { border-color: #a33a45; }
+    .hint { display: block; color: #607086; font-size: .8rem; margin-top: 4px; }
+    .actions { display: flex; gap: 10px; margin-top: 10px; }
+    button { cursor: pointer; border-radius: 7px; min-height: 44px; padding: 10px 18px; font: inherit; font-weight: 650; border: 1px solid #235da8; }
+    .primary { color: #fff; background: #195bb2; flex: 1; }
+    .primary:hover { background: #10488f; }
+    .secondary { color: #24517f; background: #fff; border-color: #99adc7; }
+    .secondary:hover { background: #f2f7fc; }
+    #errors { color: #a52636; font-size: .9rem; margin-top: 12px; min-height: 1.2em; }
+    [hidden] { display: none !important; }
+    .empty { background: #f7f9fc; border-radius: 10px; color: #586c82; padding: 20px; border: 1px dashed #b8c6d6; }
+    .stat { border-top: 1px solid #e3e8f0; display: flex; justify-content: space-between; gap: 12px; align-items: baseline; padding: 13px 0; }
+    .stat:first-of-type { border-top: 0; }
+    .stat-label { color: #52647a; font-size: .92rem; }
+    .value { font-weight: 750; font-variant-numeric: tabular-nums; font-size: 1.55rem; color: #174e8b; text-align: right; white-space: nowrap; }
+    .value small { display: block; color: #65768c; font-weight: 450; font-size: .7rem; }
+    .small { font-size: .87rem; color: #55667a; }
+    .breakdown { background: #f7f9fc; padding: 14px; border-radius: 9px; margin-top: 12px; }
+    .breakdown p { display: flex; justify-content: space-between; margin: 4px 0; }
+    .notice { border-left: 3px solid #3977bd; background: #eef4fc; padding: 13px 16px; margin-top: 18px; border-radius: 0 8px 8px 0; font-size: .9rem; }
+    .notes { margin-top: 18px; }
+    a { color: #1559a0; }
+    footer { margin-top: 24px; font-size: .83rem; color: #53687d; }
+    @media (max-width: 700px) { body { padding: 18px 12px; } .layout { grid-template-columns: 1fr; } .panel { padding: 19px; } }
+  </style>
 </head>
 <body>
-
-    <div class="header">
-        <div class="header-title">
-            <h1>Serum Osmolality Calculator</h1>
-            <p>Domain: Clinical & Cryptographic AI | Standard: CAP / CLSI / NIST Standards | LabMind-Atlas Architecture</p>
+<main>
+  <header>
+    <div class="eyebrow">Clinical chemistry · Electrolytes</div>
+    <h1>Serum osmolality calculator</h1>
+    <p class="lead">Estimate total serum osmolality and effective osmolality (tonicity). Enter a measured result to calculate the osmolal gap.</p>
+  </header>
+  <div class="layout">
+    <section class="panel" aria-labelledby="input-title">
+      <h2 id="input-title">Laboratory values</h2>
+      <form id="calculator-form">
+        <div class="field"><label for="units">Laboratory units</label>
+          <select id="units" name="units"><option value="conventional">Conventional (mg/dL)</option><option value="si">SI (mmol/L)</option></select>
         </div>
-        <div>
-            <span class="badge">Air-Gapped Active</span>
-            <span class="badge" style="background: rgba(16,185,129,0.2); color: #10b981; border-color: #10b981;">Zero-PHI Guard Active</span>
+        <div class="field"><label for="sodium">Serum sodium <span class="unit">(mmol/L)</span></label>
+          <input id="sodium" name="sodium" type="number" inputmode="decimal" step="any" min="0.000001" required placeholder="e.g. 140">
         </div>
-    </div>
-
-    <div class="metrics-bar">
-        <div class="metric-box">
-            <div class="metric-label">System Status</div>
-            <div class="metric-val" style="color: var(--success);" id="m-status">OPTIMAL</div>
+        <div class="field"><label for="glucose">Serum glucose <span class="unit" id="glucose-unit">(mg/dL)</span></label>
+          <input id="glucose" name="glucose" type="number" inputmode="decimal" step="any" min="0" required placeholder="e.g. 100">
         </div>
-        <div class="metric-box">
-            <div class="metric-label">Tasks Processed</div>
-            <div class="metric-val" id="m-tasks">142</div>
+        <div class="field"><label for="nitrogen"><span id="nitrogen-label">Blood urea nitrogen (BUN)</span> <span class="unit" id="nitrogen-unit">(mg/dL)</span></label>
+          <input id="nitrogen" name="nitrogen" type="number" inputmode="decimal" step="any" min="0" required placeholder="e.g. 14">
         </div>
-        <div class="metric-box">
-            <div class="metric-label">Audit Blocks Signed</div>
-            <div class="metric-val" id="m-audit">142</div>
+        <div class="field"><label for="measured">Measured serum osmolality <span class="unit">(mOsm/kg, optional)</span></label>
+          <input id="measured" name="measured" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 300">
+          <span class="hint">Required only to calculate the osmolal gap.</span>
         </div>
-        <div class="metric-box">
-            <div class="metric-label">PHI Interceptions</div>
-            <div class="metric-val" style="color: var(--accent);" id="m-phi">0</div>
+        <div class="actions"><button class="primary" type="submit">Calculate</button><button class="secondary" type="reset">Clear</button></div>
+        <p id="errors" role="alert" aria-live="polite"></p>
+      </form>
+    </section>
+    <section class="panel" aria-labelledby="result-title">
+      <h2 id="result-title">Results</h2>
+      <div class="empty" id="empty-state">Enter laboratory values, then select <strong>Calculate</strong> to view your results.</div>
+      <div id="results" hidden aria-live="polite">
+        <div class="stat"><span class="stat-label">Calculated osmolality</span><span class="value"><span id="calculated"></span><small>mOsm/kg (estimated)</small></span></div>
+        <div class="stat"><span class="stat-label">Effective osmolality (tonicity)</span><span class="value"><span id="effective"></span><small>mOsm/kg (estimated)</small></span></div>
+        <div class="stat"><span class="stat-label">Osmolal gap</span><span class="value"><span id="gap"></span><small>mOsm/kg</small></span></div>
+        <div class="breakdown">
+          <strong>Contribution to calculated osmolality</strong>
+          <p><span>Sodium and accompanying ions</span><span id="sodium-part"></span></p>
+          <p><span>Glucose</span><span id="glucose-part"></span></p>
+          <p><span>Urea</span><span id="urea-part"></span></p>
         </div>
-    </div>
-
-    <div class="grid">
-        <div class="card">
-            <h2>⚙️ Dispatch Distributed Component Audit</h2>
-            <div class="form-group">
-                <label>Task / Sample ID</label>
-                <input type="text" id="task_id" value="TASK-2026-LIVE-01">
-            </div>
-            <div class="form-group">
-                <label>Target Identifier</label>
-                <input type="text" id="target_id" value="SPECIMEN-ALPHA-77">
-            </div>
-            <div class="form-group">
-                <label>Primary Measurement / Value</label>
-                <input type="number" id="primary_metric" value="29.4" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Secondary Metric / Kinetic Index</label>
-                <input type="number" id="secondary_metric" value="14.8" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Status / Phenotype Descriptor</label>
-                <input type="text" id="status_descriptor" value="DISCORDANT_ANOMALY">
-            </div>
-            <div class="form-group">
-                <label><input type="checkbox" id="is_critical" checked> Trigger Emergency / Critical Flag</label>
-            </div>
-            <button class="btn" onclick="runAudit()">Execute Distributed Component Audit</button>
-        </div>
-
-        <div class="card">
-            <h2>📊 Real-Time Consensus Dossier & Audit Log</h2>
-            <div class="terminal" id="outputConsole">// Serum Osmolality Calculator Operations Console Ready
-// Connection established with Air-Gapped Supervisor
-// Cryptographic HMAC-SHA256 audit ledger loaded.
-// Ready for live task payload dispatch...</div>
-        </div>
-    </div>
-
-    <script>
-        async function runAudit() {
-            const consoleEl = document.getElementById('outputConsole');
-            consoleEl.innerText = "// Dispatching task across specialized workers...
-// Invoking InvariantQCWorker, SafetyEscalationWorker, ProtocolWorker...";
-
-            const payload = {
-                task_id: document.getElementById('task_id').value,
-                target_identifier: document.getElementById('target_id').value,
-                primary_metric: parseFloat(document.getElementById('primary_metric').value),
-                secondary_metric: parseFloat(document.getElementById('secondary_metric').value),
-                status_descriptor: document.getElementById('status_descriptor').value,
-                is_critical_flag: document.getElementById('is_critical').checked
-            };
-
-            try {
-                const res = await fetch('/api/audit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                consoleEl.innerText = JSON.stringify(data, null, 2);
-                document.getElementById('m-tasks').innerText = parseInt(document.getElementById('m-tasks').innerText) + 1;
-                document.getElementById('m-audit').innerText = parseInt(document.getElementById('m-audit').innerText) + 1;
-            } catch (err) {
-                consoleEl.innerText = "// Offline / Simulation Output:\n" + JSON.stringify({
-                    dossier_id: "DOSSIER-SIM-" + Math.floor(Math.random()*10000),
-                    system: "serum-osmolality-calculator",
-                    domain: "Clinical & Cryptographic AI",
-                    task_id: payload.task_id,
-                    overall_urgency: payload.is_critical_flag ? "CRITICAL_STAT_PANIC" : "ELEVATED_RISK",
-                    integrity_status: "DISCORDANT_ANOMALY",
-                    alerts: [
-                        { worker: "InvariantQCWorker", alert: "Primary metric exceeds upper reference bound" },
-                        { worker: "SafetyEscalationWorker", alert: "Critical emergency interlock flag active" }
-                    ],
-                    audit_hash: "HMAC_SHA256_e83f9a72b941d6c381f9"
-                }, null, 2);
-            }
-        }
-    </script>
+        <p class="small" style="margin-top:14px;">Osmolal gap = measured − calculated. A gap is not a standalone diagnostic test; formula choice and the clinical context matter.</p>
+      </div>
+    </section>
+  </div>
+  <section class="panel notes" aria-labelledby="method-title">
+    <h2 id="method-title">Method and limitations</h2>
+    <p><strong>Formula:</strong> <span id="formula">2 × sodium + glucose ÷ 18 + BUN ÷ 2.8</span>.</p>
+    <p class="small">Estimated tonicity excludes urea. This model excludes ethanol and other unmeasured osmoles. It is an approximation of measured osmolality; it cannot identify the cause of an abnormal result. Use matched laboratory samples and locally validated reference intervals. Clinical decisions require independent assessment.</p>
+    <p class="small">Reference: <a href="https://www.uptodate.com/contents/serum-osmolal-gap" rel="noopener noreferrer" target="_blank">Serum osmolal gap (UpToDate)</a>; <a href="https://www.healthcare.uiowa.edu/path_handbook/appendix/chem/osmo_gap.html" rel="noopener noreferrer" target="_blank">University of Iowa: osmolality gap and formula differences</a>.</p>
+    <div class="notice">This calculator runs entirely in your browser. No laboratory values are transmitted or stored by this page. Do not enter patient identifiers.</div>
+  </section>
+  <footer>Educational and research use only · Not a substitute for laboratory measurement or clinical judgment.</footer>
+</main>
+<script src="./calculator.js" defer></script>
+<script src="./app.js" defer></script>
 </body>
 </html>

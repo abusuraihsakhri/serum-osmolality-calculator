@@ -1,192 +1,78 @@
 # Serum Osmolality Calculator
 
-> **Domain:** Clinical Decision Support & Biomedical Computing
-> **Reference Guidelines & Standards:** CAP / CLSI / ISO Standards
+Calculate an **estimated serum osmolality**, **effective osmolality (tonicity)**, and—when a measured laboratory value is available—the **osmolal gap**. A static browser calculator, Python functions, CLI, and FastAPI endpoint are provided.
 
-<div align="center">
+## Calculation
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
-![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
-![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
+| Quantity | Conventional laboratory units | SI units |
+| --- | --- | --- |
+| Estimated osmolality | `2 × Na + glucose/18 + BUN/2.8` | `2 × Na + glucose + urea` |
+| Effective osmolality | `2 × Na + glucose/18` | `2 × Na + glucose` |
+| Osmolal gap | `measured osmolality − estimated osmolality` | Same |
 
-</div>
+- Sodium is in mmol/L in both systems; glucose and BUN are **mg/dL** in conventional units. SI glucose and **urea** are in mmol/L (do not substitute BUN for urea).
+- Reported outputs are approximate mOsm/kg. Calculated osmolality is **not** an osmometer measurement. The basic formula does not include ethanol or other unmeasured osmoles.
+- Example: sodium 140 mmol/L, glucose 90 mg/dL, BUN 14 mg/dL → estimated **290 mOsm/kg**, effective **285 mOsm/kg**. A measured 300 mOsm/kg produces a **+10 mOsm/kg** gap.
+- The choice of equation affects the osmolal gap. Interpret results using the laboratory's methods, reference intervals, and clinical context.
 
----
+Sources: [Serum osmolal gap (UpToDate)](https://www.uptodate.com/contents/serum-osmolal-gap) and [University of Iowa Healthcare: osmolality gap](https://www.healthcare.uiowa.edu/path_handbook/appendix/chem/osmo_gap.html) (describes an alternative formula).
 
-## What It Does
+## Browser app
 
-Serum Osmolality Calculator is a clinical decision support tool that computes:
+Open `web/index.html` in a modern browser, or serve the `web/` directory through any static file server. The form supports conventional and SI units, validation, numerical contribution breakdown, and optional measured osmolality. The browser application requires **no backend, Pyodide, build step, third-party JavaScript, or remote font**.
 
-- **Calculated serum osmolality** and **osmolar gap**
-- **MELD-Na** (Model for End-Stage Liver Disease with sodium)
-- **QTc** (corrected QT interval, Bazett's formula)
-- **BMI** (body mass index)
-- **HbA1c ↔ eAG** conversion (estimated average glucose)
-- **APRI / FIB-4** liver fibrosis indices
+All values entered in the browser are processed in memory only. The static page does not submit laboratory values, use browser storage, or make API requests. Avoid patient identifiers.
 
-It also provides a multi-agent audit pipeline with PHI outbound protection and a tamper-evident HMAC-SHA256 audit trail.
+## Python and CLI
 
----
-
-## Key Capabilities & Algorithmic Modules
-
-### Clinical Calculation Functions
-
-| Function | Description | Required Inputs |
-|:---------|:------------|:----------------|
-| `calculate_meld_na()` | MELD-Na score for liver disease severity | bilirubin, creatinine, inr, sodium |
-| `calculate_qtc()` | QTc via Bazett's formula | qt_ms/qt + (rr_ms or hr_bpm) |
-| `calculate_bmi_z()` | Body mass index | weight_kg, height_cm |
-| `convert_hba1c()` | HbA1c ↔ estimated average glucose | hba1c_percent or eag_mgdl |
-| `calculate_apri_fib4()` | APRI and FIB-4 liver fibrosis indices | ast_u_l, platelets_109 |
-| `calculate_score()` | Generic weighted-score fallback | any numeric inputs |
-
-### Routing
-
-`assess_row(row)` inspects a dictionary of lab values and automatically routes to the appropriate calculator based on the keys present.
-
----
-
-## Quickstart
-
-### Prerequisites
-
-- Python 3.10+
-- pip
-
-### Installation
+Requires Python 3.10+. From the project root:
 
 ```bash
-pip install -e ".[dev]"
+python -m pip install -e ".[dev]"
+serum-osmolality calculate --sodium 140 --glucose 90 --bun 14 --measured-osmolality 300
+serum-osmolality calculate --si --sodium 140 --glucose 5 --urea 5
+serum-osmolality osm-batch --input sample.csv --output results.csv
 ```
 
-### Environment Configuration
+Python usage:
 
-Copy `.env.example` to `.env` and set a strong audit key:
+```python
+from serum import calculate_osmolality
+result = calculate_osmolality(sodium=140, glucose=90, bun=14, measured_osmolality=300)
+# {'calculated_osmolality': 290.0, 'effective_osmolality': 285.0, 'osmolal_gap': 10.0}
+```
+
+Input validation rejects missing, negative, or non-finite concentrations and mismatched units. Batch input CSV rows use `sodium,glucose,bun` (conventional) or `sodium,glucose,urea,unit_system` (SI), with optional `measured_osmolality`.
+
+## API and local service
 
 ```bash
-cp .env.example .env
-# Edit .env and set AUDIT_SECRET_KEY to a random value:
-#   python -c "import secrets; print(secrets.token_hex(32))"
+serum-osmolality serve --host 127.0.0.1 --port 8000
 ```
 
-### CLI Usage
+The live service serves the same browser UI at `/`. POST JSON to `/api/osmolality`:
 
-**Single calculation (JSON input):**
-```bash
-python cli.py single --json '{"bilirubin": 2.0, "creatinine": 1.5, "inr": 1.2, "sodium": 135}'
+```json
+{"sodium": 140, "glucose": 90, "bun": 14, "measured_osmolality": 300}
 ```
 
-**Single calculation (named args):**
-```bash
-python cli.py single --bili 2.0 --creat 1.5 --inr 1.2 --na 135
-```
+The response includes `calculated_osmolality`, `effective_osmolality`, and `osmolal_gap`. API documentation is at `/docs`.
 
-**Batch CSV processing:**
-```bash
-python cli.py batch --input sample.csv --output results.csv
-```
+Existing `audit`, `batch`, `chat`, and `verify-audit` CLI commands and the legacy agent endpoints remain available for compatibility. Their agent thresholds, mock provider, and enrichment features are **illustrative implementations**, not clinically validated monitoring, risk stratification, EHR integration, or AI analysis. The API has no authentication; do not expose it publicly for patient data.
 
-**Interactive agent audit:**
-```bash
-python cli.py audit --task-id TASK-001 --primary 28.5 --secondary 14.2
-```
+For the optional in-memory HMAC audit trail, configure `AUDIT_SECRET_KEY` with a strong random value. When unset, an ephemeral random key is used. The identifier-pattern guard is not a reliable PHI de-identification service; do not process identifiable patient data. Audit records are not persisted across restarts.
 
-**Verify audit trail integrity:**
-```bash
-python cli.py verify-audit
-```
-
-**Launch REST API server:**
-```bash
-python cli.py serve --host 127.0.0.1 --port 8000
-```
-
-### REST API Endpoints
-
-| Method | Path | Description |
-|:-------|:-----|:------------|
-| GET | `/health` | Health and metadata |
-| GET | `/metrics` | Operational metrics |
-| POST | `/api/audit` | Submit task payload for multi-agent evaluation |
-| POST | `/api/chat` | Supervisory conversational query |
-| GET | `/api/audit/logs` | Retrieve and verify HMAC audit trail |
-
----
-
-## Testing
-
-Run the full test suite:
+## Tests and development
 
 ```bash
-pytest -v
+python -m pytest -q
+node --test tests/*.test.cjs  # Node.js 20+; no npm dependencies
 ```
 
-Run with coverage:
-
-```bash
-pytest -v --cov=. --cov-report=term-missing
-```
-
----
-
-## Container Deployment
-
-### Docker
-
-```bash
-docker build -t serum-osmolality-calculator .
-docker run -p 8000:8000 --env-file .env serum-osmolality-calculator
-```
-
-### Docker Compose
-
-```bash
-docker compose up --build
-```
-
----
-
-## Security
-
-- **Zero-PHI Outbound Interceptor:** AST and regex inspection blocking SSNs, MRNs, phone numbers, emails, and patient identifiers.
-- **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation.
-- **Path Traversal Protection:** All file I/O validates paths against traversal sequences and unsafe characters.
-- **Configurable Audit Key:** The HMAC signing key is read from the `AUDIT_SECRET_KEY` environment variable — never hardcoded.
-
----
-
-## Project Structure
-
-```
-serum-osmolality-calculator/
-├── agents/                  # Multi-agent audit pipeline
-│   ├── base.py              # PHI guard, HMAC audit trail
-│   ├── models.py            # Pydantic schemas
-│   ├── supervisor.py        # Orchestrator
-│   ├── workers.py           # Specialized evaluation workers
-│   ├── api.py               # FastAPI REST server
-│   ├── metrics.py           # Prometheus metrics
-│   ├── learning.py          # Bayesian calibration engine
-│   ├── llm_factory.py       # LLM provider abstraction
-│   └── streamer.py          # WebSocket telemetry
-├── tests/                   # Pytest test suite
-├── web/index.html           # Operations console UI
-├── cli.py                   # CLI entry point
-├── osmolality.py            # Core clinical calculations
-├── enrichment.py            # Enrichment feature engines
-├── simulator.py             # High-throughput stress simulator
-├── pyproject.toml           # Project metadata and dependencies
-├── Dockerfile               # Container build
-├── docker-compose.yml       # Compose orchestration
-└── .env.example             # Environment template
-```
-
----
+GitHub Actions tests Python 3.10–3.12 and browser calculations. A separate workflow deploys `web/` to GitHub Pages after a push to `master`. The static calculator works in current Chromium, Firefox, and Safari-compatible browsers; browser/device-specific compatibility has not been exhaustively validated.
 
 ## License
 
-MIT License — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
+
+**Scope:** Educational and research use. Not a medical device or a replacement for measured laboratory osmolality, toxicology workup, or clinical judgment.

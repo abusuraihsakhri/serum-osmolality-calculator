@@ -164,10 +164,9 @@ class TestAssessRow:
         r = m.assess_row({"ast_u_l": 80, "platelets_109": 200})
         assert "apri" in r
 
-    def test_fallback_to_score(self):
+    def test_unknown_fields_are_rejected(self):
         r = m.assess_row({"value": 10})
-        assert isinstance(r, dict)
-        assert "score" in r
+        assert "error" in r
 
     def test_non_dict_input_returns_error(self):
         r = m.assess_row("not a dict")  # type: ignore
