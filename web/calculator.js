@@ -5,7 +5,7 @@
     if (value === "" || value === null || value === undefined || (typeof value !== "number" && typeof value !== "string")) {
       throw new Error(name + " is required.");
     }
-    if (typeof value === "string" && !/^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:e[+-]?[0-9]+)?$/i.test(value.trim())) {
+    if (typeof value === "string" && !/^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:e[+-]?[0-9]+)?$/i.test(value.trim())) {
       throw new Error(name + " must be a decimal number.");
     }
     const number = Number(value);
