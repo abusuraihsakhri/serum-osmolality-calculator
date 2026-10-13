@@ -13,8 +13,8 @@ supervisor = SystemSupervisor(model_provider="mock")
 
 app = FastAPI(
     title="Serum Osmolality Calculator API",
-    description="Enterprise Distributed Component Platform (Clinical & Biomedical AI)",
-    version="3.0.0-ENTERPRISE",
+    description="Serum laboratory osmolality estimates; legacy audit endpoints are demonstrations",
+    version="3.1.0",
 )
 
 
@@ -70,7 +70,7 @@ def calculator_js():
 
 @app.get("/health")
 def health():
-    return {"status": "HEALTHY", "service": "serum-osmolality-calculator", "domain": "Clinical & Biomedical AI", "standard": "CAP / CLSI / ISO Standards", "version": "3.0.0-ENTERPRISE"}
+    return {"status": "running", "service": "serum-osmolality-calculator", "version": "3.1.0"}
 
 
 @app.get("/metrics")
@@ -78,7 +78,7 @@ def metrics():
     return {
         "dossiers_processed_total": len(supervisor.dossier_registry),
         "audit_blocks_total": len(AuditLogger.get_trail()),
-        "system_status": "NOMINAL_OPTIMAL"
+        "service_status": "running"
     }
 
 
